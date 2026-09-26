@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "type": "test",
+    "description": "test",
+    "location": {
+      "lat": 0,
+      "lon": 0
+    },
+    "timestamp": 1790429093615,
+    "verified": false,
+    "severity": "low"
+  }
+]

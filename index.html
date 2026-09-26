@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tolli</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+      color: #2c3e50;
+      background: #f7f9fb;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+    }
+
+    h2 {
+      margin-top: 30px;
+    }
+
+    p {
+      color: #607080;
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccd3da;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+
+    button {
+      background: #2c3e50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #1f2d3a;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #ddd;
+      margin: 35px 0;
+    }
+
+    .incident {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-top: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .incident-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .severity {
+      font-weight: bold;
+      text-transform: capitalize;
+    }
+
+    .high {
+      color: #c0392b;
+    }
+
+    .medium {
+      color: #d68910;
+    }
+
+    .low {
+      color: #27ae60;
+    }
+
+    .empty {
+      padding: 15px;
+      color: #687785;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .status {
+      margin-top: 10px;
+      min-height: 20px;
+      color: #c0392b;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Tolli</h1>
+  <p>Real-time incident reporting and discovery</p>
+
+  <section>
+    <h2>Find Nearby Incidents</h2>
+
+    <div class="form">
+      <input id="lat" type="number" step="any" placeholder="Latitude">
+      <input id="lon" type="number" step="any" placeholder="Longitude">
+      <input id="radius" type="number" min="0" step="0.1" placeholder="Radius (km)">
+      <button id="searchButton">Search</button>
+    </div>
+
+    <div id="searchStatus" class="status"></div>
+    <div id="results"></div>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>Report Incident</h2>
+
+    <div class="form">
+      <input id="type" placeholder="Incident type">
+      <input id="desc" placeholder="Description">
+
+      <input id="lat2" type="number" step="any" placeholder="Latitude">
+      <input id="lon2" type="number" step="any" placeholder="Longitude">
+
+      <select id="severity">
+        <option value="low">Low severity</option>
+        <option value="medium">Medium severity</option>
+        <option value="high">High severity</option>
+      </select>
+
+      <button id="reportButton">Submit</button>
+    </div>
+
+    <div id="reportStatus" class="status"></div>
+  </section>
+
+  <script>
+    const elements = {
+      lat: document.getElementById("lat"),
+      lon: document.getElementById("lon"),
+      radius: document.getElementById("radius"),
+      type: document.getElementById("type"),
+      desc: document.getElementById("desc"),
+      lat2: document.getElementById("lat2"),
+      lon2: document.getElementById("lon2"),
+      severity: document.getElementById("severity"),
+      results: document.getElementById("results"),
+      searchStatus: document.getElementById("searchStatus"),
+      reportStatus: document.getElementById("reportStatus")
+    };
+
+    function isValidLatitude(value) {
+      return Number.isFinite(value) && value >= -90 && value <= 90;
+    }
+
+    function isValidLongitude(value) {
+      return Number.isFinite(value) && value >= -180 && value <= 180;
+    }
+
+    async function getIncidents() {
+      const lat = Number(elements.lat.value);
+      const lon = Number(elements.lon.value);
+      const radius = Number(elements.radius.value) || 5;
+
+      elements.searchStatus.textContent = "";
+      elements.results.innerHTML = "";
+
+      if (!isValidLatitude(lat) || !isValidLongitude(lon)) {
+        elements.searchStatus.textContent =
+          "Please enter a valid latitude and longitude.";
+        return;
+      }
+
+      if (radius <= 0) {
+        elements.searchStatus.textContent =
+          "Radius must be greater than 0.";
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/incidents?lat=${lat}&lon=${lon}&radius=${radius}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Search failed.");
+        }
+
+        if (data.length === 0) {
+          elements.results.innerHTML =
+            '<div class="empty">No incidents found nearby.</div>';
+          return;
+        }
+
+        data.forEach(incident => {
+          const div = document.createElement("div");
+          div.className = "incident";
+
+          const header = document.createElement("div");
+          header.className = "incident-header";
+
+          const type = document.createElement("strong");
+          type.textContent = incident.type;
+
+          const severity = document.createElement("span");
+          severity.className = `severity ${incident.severity}`;
+          severity.textContent = incident.severity;
+
+          header.append(type, severity);
+
+          const description = document.createElement("div");
+          description.textContent =
+            incident.description || "No description provided.";
+
+          const distance = document.createElement("div");
+          distance.textContent =
+            `${incident.distance.toFixed(2)} km away`;
+
+          const verified = document.createElement("div");
+          verified.textContent = incident.verified
+            ? "✓ Verified"
+            : "Unverified";
+
+          div.append(
+            header,
+            description,
+            distance,
+            verified
+          );
+
+          elements.results.appendChild(div);
+        });
+      } catch (error) {
+        elements.searchStatus.textContent = error.message;
+      }
+    }
+
+    async function reportIncident() {
+      const type = elements.type.value.trim();
+      const description = elements.desc.value.trim();
+      const lat = Number(elements.lat2.value);
+      const lon = Number(elements.lon2.value);
+      const severity = elements.severity.value;
+
+      elements.reportStatus.textContent = "";
+
+      if (!isValidLatitude(lat) || !isValidLongitude(lon)) {
+        elements.reportStatus.textContent =
+          "Please enter a valid latitude and longitude.";
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/incidents", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            type,
+            description,
+            lat,
+            lon,
+            severity
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Could not submit report."
+          );
+        }
+
+        elements.type.value = "";
+        elements.desc.value = "";
+        elements.lat2.value = "";
+        elements.lon2.value = "";
+        elements.severity.value = "low";
+
+        elements.reportStatus.style.color = "#27ae60";
+        elements.reportStatus.textContent =
+          "Report submitted successfully.";
+      } catch (error) {
+        elements.reportStatus.style.color = "#c0392b";
+        elements.reportStatus.textContent = error.message;
+      }
+    }
+
+    document
+      .getElementById("searchButton")
+      .addEventListener("click", getIncidents);
+
+    document
+      .getElementById("reportButton")
+      .addEventListener("click", reportIncident);
+  </script>
+</body>
+</html>
