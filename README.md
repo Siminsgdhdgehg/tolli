@@ -26,5 +26,5 @@ Technologies:
   JSON
 The search uses latitude, longitude, and radius parameters.
 
-<small>this is a fun project i made not intended to replace actual reporting systems</small>
+<sub>this is a fun project i made not intended to replace actual reporting systems</sub>
 
